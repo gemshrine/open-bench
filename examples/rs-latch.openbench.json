@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "id": "project",
+  "title": "RS-триггер на элементах И-НЕ",
+  "components": [
+    {
+      "id": "in1",
+      "type": "INPUT",
+      "x": 60,
+      "y": 110,
+      "label": "S̄",
+      "value": 0,
+      "key": "1"
+    },
+    {
+      "id": "in2",
+      "type": "INPUT",
+      "x": 60,
+      "y": 220,
+      "label": "R̄",
+      "value": 0,
+      "key": "2"
+    },
+    {
+      "id": "nand1",
+      "type": "NAND",
+      "x": 220,
+      "y": 110
+    },
+    {
+      "id": "nand2",
+      "type": "NAND",
+      "x": 220,
+      "y": 220
+    },
+    {
+      "id": "out1",
+      "type": "OUTPUT",
+      "x": 340,
+      "y": 110,
+      "label": "Q"
+    },
+    {
+      "id": "out2",
+      "type": "OUTPUT",
+      "x": 340,
+      "y": 220,
+      "label": "Q̄"
+    }
+  ],
+  "junctions": [],
+  "wires": [
+    {
+      "id": "w1",
+      "a": "in1.OUT",
+      "b": "nand1.A"
+    },
+    {
+      "id": "w2",
+      "a": "in2.OUT",
+      "b": "nand2.B"
+    },
+    {
+      "id": "w3",
+      "a": "nand1.OUT",
+      "b": "out1.IN"
+    },
+    {
+      "id": "w4",
+      "a": "nand2.OUT",
+      "b": "out2.IN"
+    },
+    {
+      "id": "w5",
+      "a": "nand1.OUT",
+      "b": "nand2.A"
+    },
+    {
+      "id": "w6",
+      "a": "nand2.OUT",
+      "b": "nand1.B"
+    }
+  ],
+  "instruments": {
+    "wordGenerator": {
+      "words": [
+        0
+      ],
+      "cycle": false,
+      "stepsPerSecond": 4
+    },
+    "logicAnalyzer": {
+      "channels": [
+        {
+          "label": "CH0",
+          "visible": true
+        },
+        {
+          "label": "CH1",
+          "visible": true
+        },
+        {
+          "label": "CH2",
+          "visible": true
+        },
+        {
+          "label": "CH3",
+          "visible": true
+        },
+        {
+          "label": "CH4",
+          "visible": true
+        },
+        {
+          "label": "CH5",
+          "visible": true
+        },
+        {
+          "label": "CH6",
+          "visible": true
+        },
+        {
+          "label": "CH7",
+          "visible": true
+        },
+        {
+          "label": "CH8",
+          "visible": true
+        },
+        {
+          "label": "CH9",
+          "visible": true
+        },
+        {
+          "label": "CH10",
+          "visible": true
+        },
+        {
+          "label": "CH11",
+          "visible": true
+        },
+        {
+          "label": "CH12",
+          "visible": true
+        },
+        {
+          "label": "CH13",
+          "visible": true
+        },
+        {
+          "label": "CH14",
+          "visible": true
+        },
+        {
+          "label": "CH15",
+          "visible": true
+        }
+      ],
+      "maxHistory": 10000,
+      "clocksPerDivision": 1
+    }
+  },
+  "viewport": {
+    "x": 20,
+    "y": 20,
+    "zoom": 1.5
+  }
+}

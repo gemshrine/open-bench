@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "id": "project",
+  "title": "Лабораторная 2: исключающее ИЛИ",
+  "components": [
+    {
+      "id": "wg",
+      "type": "WORD_GENERATOR",
+      "x": 40,
+      "y": 20
+    },
+    {
+      "id": "xor1",
+      "type": "XOR",
+      "x": 140,
+      "y": 120
+    },
+    {
+      "id": "out1",
+      "type": "OUTPUT",
+      "x": 240,
+      "y": 120,
+      "label": "Y"
+    },
+    {
+      "id": "la",
+      "type": "LOGIC_ANALYZER",
+      "x": 320,
+      "y": 20
+    }
+  ],
+  "junctions": [],
+  "wires": [
+    {
+      "id": "w1",
+      "a": "wg.D0",
+      "b": "xor1.A"
+    },
+    {
+      "id": "w2",
+      "a": "wg.D1",
+      "b": "xor1.B"
+    },
+    {
+      "id": "w3",
+      "a": "xor1.OUT",
+      "b": "out1.IN"
+    },
+    {
+      "id": "w4",
+      "a": "xor1.OUT",
+      "b": "la.CH0"
+    },
+    {
+      "id": "w5",
+      "a": "wg.D0",
+      "b": "la.CH1"
+    },
+    {
+      "id": "w6",
+      "a": "wg.D1",
+      "b": "la.CH2"
+    }
+  ],
+  "instruments": {
+    "wordGenerator": {
+      "words": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "cycle": false,
+      "stepsPerSecond": 4
+    },
+    "logicAnalyzer": {
+      "channels": [
+        {
+          "label": "Y",
+          "visible": true
+        },
+        {
+          "label": "A = D0",
+          "visible": true
+        },
+        {
+          "label": "B = D1",
+          "visible": true
+        },
+        {
+          "label": "CH3",
+          "visible": true
+        },
+        {
+          "label": "CH4",
+          "visible": true
+        },
+        {
+          "label": "CH5",
+          "visible": true
+        },
+        {
+          "label": "CH6",
+          "visible": true
+        },
+        {
+          "label": "CH7",
+          "visible": true
+        },
+        {
+          "label": "CH8",
+          "visible": true
+        },
+        {
+          "label": "CH9",
+          "visible": true
+        },
+        {
+          "label": "CH10",
+          "visible": true
+        },
+        {
+          "label": "CH11",
+          "visible": true
+        },
+        {
+          "label": "CH12",
+          "visible": true
+        },
+        {
+          "label": "CH13",
+          "visible": true
+        },
+        {
+          "label": "CH14",
+          "visible": true
+        },
+        {
+          "label": "CH15",
+          "visible": true
+        }
+      ],
+      "maxHistory": 10000,
+      "clocksPerDivision": 1
+    }
+  },
+  "viewport": {
+    "x": 20,
+    "y": 20,
+    "zoom": 1.5
+  }
+}

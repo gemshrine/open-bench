@@ -1,0 +1,37 @@
+{
+  "name": "openbench",
+  "private": true,
+  "version": "0.1.0",
+  "description": "OpenBench — свободный учебный стенд цифровой схемотехники: редактор схем, Word Generator, Logic Analyzer, MCP",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @openbench/desktop",
+    "tauri": "npm run tauri -w @openbench/desktop --",
+    "build": "npm run build -w @openbench/desktop && npm run build -w @openbench/mcp-server",
+    "typecheck": "tsc -p packages/core && tsc -p apps/desktop && tsc -p apps/mcp-server",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:e2e": "npm run test:e2e -w @openbench/desktop",
+    "test:rust": "cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml",
+    "test:tauri-sync": "node apps/desktop/e2e-tauri/sync-check.mjs",
+    "examples": "tsx scripts/make-examples.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.2",
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^5.0.5"
+  }
+}

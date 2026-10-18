@@ -1,0 +1,26 @@
+{
+  "name": "@openbench/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Локальный MCP-сервер OpenBench (stdio), управляющий открытым окном OpenBench",
+  "type": "module",
+  "bin": {
+    "openbench-mcp": "./dist/openbench-mcp.mjs"
+  },
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/openbench-mcp.mjs --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\"",
+    "build:headless": "esbuild src/headless-main.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/openbench-headless.mjs --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\"",
+    "start": "node dist/openbench-mcp.mjs",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@openbench/core": "*",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15"
+  }
+}
