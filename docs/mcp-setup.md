@@ -76,7 +76,8 @@ claude mcp add openbench -- node /home/user/open-bench/apps/mcp-server/dist/open
 |---|---|
 | `get_project_state` | проект, компоненты с ID выводов, провода, сети и значения, приборы, симуляция, диагностика |
 | `new_project` | пустой проект |
-| `add_component` | добавить элемент → ID и список выводов |
+| `add_component` | добавить элемент → ID и список выводов; у AND/NAND/OR/NOR/XOR/XNOR — `inputs` 2…8 |
+| `set_gate_inputs` | изменить число входов вентиля (2…8) → новый список выводов |
 | `move_component` / `remove_component` | переместить / удалить (вместе с проводами) |
 | `connect_pins` / `disconnect_pins` | соединить / разъединить выводы (`comp.PIN`) |
 | `set_input` | INPUT = 0/1 |

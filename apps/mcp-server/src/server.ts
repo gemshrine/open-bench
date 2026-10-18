@@ -26,7 +26,12 @@ const TOOLS: Record<ApiMethod, ToolDef> = {
   add_component: {
     title: 'Добавить элемент',
     description:
-      'Add a component at canvas coordinates (grid 10). Types: INPUT (manual switch), OUTPUT (probe), CONST0, CONST1, BUFFER, NOT, AND, NAND, OR, NOR, XOR, XNOR, WORD_GENERATOR (pins D0..D15, D0 = LSB, one per project), LOGIC_ANALYZER (pins CH0..CH15, one per project). Returns the component ID and its valid pin IDs ("and1.A", "and1.B", "and1.OUT").',
+      'Add a component at canvas coordinates (grid 10). Types: INPUT (manual switch), OUTPUT (probe), CONST0, CONST1, BUFFER, NOT, AND, NAND, OR, NOR, XOR, XNOR, WORD_GENERATOR (pins D0..D15, D0 = LSB, one per project), LOGIC_ANALYZER (pins CH0..CH15, one per project). AND/NAND/OR/NOR/XOR/XNOR accept inputs=2..8 (input pins A..H, default 2). Returns the component ID and its valid pin IDs ("and1.A", "and1.B", "and1.OUT").',
+  },
+  set_gate_inputs: {
+    title: 'Число входов вентиля',
+    description:
+      'Change the number of inputs (2..8, pins A..H) of an AND/NAND/OR/NOR/XOR/XNOR gate; returns the new pin IDs. Shrinking is rejected with INVALID_CONNECTION while a removed pin is still wired — disconnect it first.',
   },
   move_component: { title: 'Переместить элемент', description: 'Move a component to new top-left coordinates (snapped to the 10-unit grid). Wires follow.' },
   remove_component: { title: 'Удалить элемент', description: 'Remove a component and every wire attached to it.', destructive: true },

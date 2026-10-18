@@ -1,5 +1,5 @@
 import type { Circuit, Component, ComponentType, Endpoint, PinDirection, PinSide, Point } from './types.js';
-import { ANALYZER_CHANNELS, WORD_BITS, isPinEndpoint, splitPinId } from './types.js';
+import { ANALYZER_CHANNELS, MAX_GATE_INPUTS, MIN_GATE_INPUTS, WORD_BITS, isMultiInputGateType, isPinEndpoint, splitPinId } from './types.js';
 
 export const GRID = 10;
 
@@ -18,15 +18,24 @@ export interface Footprint {
   pins: PinDef[];
 }
 
-const twoInputGate: Footprint = {
-  width: 40,
-  height: 20,
-  pins: [
-    { name: 'A', direction: 'input', x: 0, y: 5, side: 'left' },
-    { name: 'B', direction: 'input', x: 0, y: 15, side: 'left' },
-    { name: 'OUT', direction: 'output', x: 40, y: 10, side: 'right' },
-  ],
-};
+/** Input pin names of multi-input gates, in order: A, B, … H. */
+export const GATE_INPUT_PINS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as const;
+
+/** Inputs every 10 units starting at y=5, output centred on the right; 2 inputs give a 40×20 symbol. */
+function multiInputGate(n: number): Footprint {
+  const height = n * 10;
+  return {
+    width: 40,
+    height,
+    pins: [
+      ...GATE_INPUT_PINS.slice(0, n).map((name, i) => ({ name, direction: 'input' as const, x: 0, y: 5 + i * 10, side: 'left' as const })),
+      { name: 'OUT', direction: 'output', x: 40, y: height / 2, side: 'right' },
+    ],
+  };
+}
+
+const multiInputGates: Footprint[] = Array.from({ length: MAX_GATE_INPUTS + 1 }, (_, n) => multiInputGate(Math.max(n, MIN_GATE_INPUTS)));
+const twoInputGate = multiInputGates[MIN_GATE_INPUTS]!;
 
 const oneInputGate: Footprint = {
   width: 40,
@@ -84,12 +93,23 @@ export const FOOTPRINTS: Record<ComponentType, Footprint> = {
   LOGIC_ANALYZER: logicAnalyzer,
 };
 
-export function footprint(type: ComponentType): Footprint {
-  return FOOTPRINTS[type];
+/** A component type (default parameters) or a component whose parameters shape its footprint. */
+export type FootprintKey = ComponentType | Pick<Component, 'type' | 'inputs'>;
+
+/** Number of inputs of a gate: `inputs` for multi-input gates (default 2), 1 for NOT/BUFFER. */
+export function gateInputCount(c: Pick<Component, 'type' | 'inputs'>): number {
+  if (!isMultiInputGateType(c.type)) return c.type === 'NOT' || c.type === 'BUFFER' ? 1 : 0;
+  return c.inputs ?? MIN_GATE_INPUTS;
 }
 
-export function pinDef(type: ComponentType, pin: string): PinDef | undefined {
-  return FOOTPRINTS[type].pins.find((p) => p.name === pin);
+export function footprint(key: FootprintKey): Footprint {
+  if (typeof key === 'string') return FOOTPRINTS[key];
+  if (isMultiInputGateType(key.type) && key.inputs !== undefined) return multiInputGates[key.inputs] ?? FOOTPRINTS[key.type];
+  return FOOTPRINTS[key.type];
+}
+
+export function pinDef(key: FootprintKey, pin: string): PinDef | undefined {
+  return footprint(key).pins.find((p) => p.name === pin);
 }
 
 export function pinPosition(c: Component, pin: PinDef): Point {
@@ -116,11 +136,11 @@ export function endpointGeometry(circuit: Circuit, e: Endpoint): EndpointGeometr
     const { componentId, pin } = splitPinId(e);
     const c = circuit.components.find((x) => x.id === componentId);
     if (!c) return undefined;
-    const def = pinDef(c.type, pin);
+    const def = pinDef(c, pin);
     if (!def) return undefined;
     // Pins on the same side get staggered lead-outs so that wires routed around the
     // component do not run on top of each other (which would look like a connection).
-    const sameSide = FOOTPRINTS[c.type].pins.filter((p) => p.side === def.side);
+    const sameSide = footprint(c).pins.filter((p) => p.side === def.side);
     const rank = sameSide.length <= 4 ? sameSide.indexOf(def) : 0;
     return { point: pinPosition(c, def), side: def.side, stub: STUB + 5 * rank };
   }
@@ -215,6 +235,6 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 export function componentBounds(c: Component): { x: number; y: number; width: number; height: number } {
-  const f = FOOTPRINTS[c.type];
+  const f = footprint(c);
   return { x: c.x, y: c.y, width: f.width, height: f.height };
 }

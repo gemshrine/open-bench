@@ -76,6 +76,11 @@
           "key": {
             "type": "string",
             "maxLength": 1
+          },
+          "inputs": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 8
           }
         },
         "required": [

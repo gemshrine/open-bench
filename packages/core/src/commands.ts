@@ -4,13 +4,13 @@ import { componentBounds, footprint, pinDef, pinPosition, projectOnPolyline, sim
 import { wirePolyline } from './routing.js';
 import { buildNetlist, pinDirection } from './netlist.js';
 import type { Circuit, Component, ComponentType, Endpoint, Junction, PinDirection, Point, Wire } from './types.js';
-import { ANALYZER_CHANNELS, COMPONENT_TYPES, MAX_WORDS, isPinEndpoint, splitPinId } from './types.js';
+import { ANALYZER_CHANNELS, COMPONENT_TYPES, MAX_GATE_INPUTS, MAX_WORDS, MIN_GATE_INPUTS, isMultiInputGateType, isPinEndpoint, splitPinId } from './types.js';
 
 /** Endpoint given by id, or a point on an existing wire (a junction will be inserted there). */
 export type EndpointSpec = Endpoint | { wireId: string; x: number; y: number };
 
 export type EditCommand =
-  | { type: 'addComponent'; componentType: ComponentType; x: number; y: number; label?: string; id?: string; key?: string }
+  | { type: 'addComponent'; componentType: ComponentType; x: number; y: number; label?: string; id?: string; key?: string; inputs?: number }
   | {
       type: 'moveItems';
       components?: { id: string; x: number; y: number }[];
@@ -20,7 +20,7 @@ export type EditCommand =
   | { type: 'connect'; a: EndpointSpec; b: EndpointSpec; points?: Point[] }
   | { type: 'disconnect'; a: Endpoint; b: Endpoint }
   | { type: 'setWirePoints'; wireId: string; points: Point[] | null }
-  | { type: 'setComponentProps'; id: string; label?: string | null; key?: string | null }
+  | { type: 'setComponentProps'; id: string; label?: string | null; key?: string | null; inputs?: number }
   | { type: 'setWords'; words: number[] }
   | { type: 'configureWordGenerator'; cycle?: boolean; stepsPerSecond?: number }
   | {
@@ -42,7 +42,7 @@ export interface PinInfo {
 }
 
 export function componentPins(c: Component): PinInfo[] {
-  return footprint(c.type).pins.map((p) => {
+  return footprint(c).pins.map((p) => {
     const pos = pinPosition(c, p);
     return { id: `${c.id}.${p.name}`, name: p.name, direction: p.direction, x: pos.x, y: pos.y };
   });
@@ -102,11 +102,18 @@ function checkCoord(v: number, name: string): void {
   if (!Number.isFinite(v) || Math.abs(v) > 100000) fail('INVALID_ARGUMENT', `Недопустимая координата ${name}: ${v}`);
 }
 
+function checkGateInputs(type: ComponentType, inputs: number): void {
+  if (!isMultiInputGateType(type)) fail('INVALID_ARGUMENT', `Число входов задаётся только вентилям AND/NAND/OR/NOR/XOR/XNOR, а не ${type}`);
+  if (!Number.isInteger(inputs) || inputs < MIN_GATE_INPUTS || inputs > MAX_GATE_INPUTS)
+    fail('INVALID_ARGUMENT', `Число входов: целое ${MIN_GATE_INPUTS}…${MAX_GATE_INPUTS}, получено ${String(inputs)}`);
+}
+
 function addComponent(c: Circuit, cmd: Extract<EditCommand, { type: 'addComponent' }>): EditResult {
   if (!(COMPONENT_TYPES as readonly string[]).includes(cmd.componentType))
     fail('INVALID_ARGUMENT', `Неизвестный тип "${String(cmd.componentType)}". Допустимые: ${COMPONENT_TYPES.join(', ')}`);
   checkCoord(cmd.x, 'x');
   checkCoord(cmd.y, 'y');
+  if (cmd.inputs !== undefined) checkGateInputs(cmd.componentType, cmd.inputs);
   if (cmd.componentType === 'WORD_GENERATOR' && c.components.some((x) => x.type === 'WORD_GENERATOR'))
     fail('INVALID_ARGUMENT', 'Word Generator уже есть в схеме (допускается один)');
   if (cmd.componentType === 'LOGIC_ANALYZER' && c.components.some((x) => x.type === 'LOGIC_ANALYZER'))
@@ -121,6 +128,7 @@ function addComponent(c: Circuit, cmd: Extract<EditCommand, { type: 'addComponen
   }
   const comp: Component = { id, type: cmd.componentType, x: snap(cmd.x), y: snap(cmd.y) };
   if (cmd.label !== undefined) comp.label = cmd.label.slice(0, 64);
+  if (cmd.inputs !== undefined && cmd.inputs !== MIN_GATE_INPUTS) comp.inputs = cmd.inputs;
   if (cmd.componentType === 'INPUT') {
     comp.value = 0;
     const key = cmd.key ?? nextInputKey(c);
@@ -252,8 +260,8 @@ function validateEndpoint(c: Circuit, e: Endpoint): void {
     const { componentId, pin } = splitPinId(e);
     const comp = c.components.find((x) => x.id === componentId);
     if (!comp) fail('INVALID_ID', `Компонент "${componentId}" не найден (вывод ${e})`);
-    if (!pinDef(comp.type, pin))
-      fail('INVALID_ID', `У ${componentId} (${comp.type}) нет вывода "${pin}". Доступные: ${footprint(comp.type).pins.map((p) => `${componentId}.${p.name}`).join(', ')}`);
+    if (!pinDef(comp, pin))
+      fail('INVALID_ID', `У ${componentId} (${comp.type}) нет вывода "${pin}". Доступные: ${footprint(comp).pins.map((p) => `${componentId}.${p.name}`).join(', ')}`);
   } else if (!c.junctions.some((j) => j.id === e)) {
     fail('INVALID_ID', `Узел "${e}" не найден. Укажите вывод в формате <компонент>.<вывод>, например and1.A`);
   }
@@ -371,7 +379,21 @@ function setComponentProps(c: Circuit, cmd: Extract<EditCommand, { type: 'setCom
       next.key = k;
     }
   }
-  return { circuit: { ...c, components: c.components.map((x) => (x.id === comp.id ? next : x)) }, result: { component: next } };
+  if (cmd.inputs !== undefined) {
+    checkGateInputs(comp.type, cmd.inputs);
+    // Shrinking must not silently drop wires: removed pins have to be disconnected first.
+    const kept = new Set(footprint({ type: comp.type, inputs: cmd.inputs }).pins.map((p) => `${comp.id}.${p.name}`));
+    const busy = c.wires
+      .flatMap((w) => [w.a, w.b])
+      .filter((e) => isPinEndpoint(e) && splitPinId(e).componentId === comp.id && !kept.has(e));
+    if (busy.length > 0)
+      fail('INVALID_CONNECTION', `Нельзя уменьшить число входов ${comp.id} до ${cmd.inputs}: подключены ${[...new Set(busy)].sort().join(', ')}. Сначала отключите их.`, {
+        pins: [...new Set(busy)].sort(),
+      });
+    if (cmd.inputs === MIN_GATE_INPUTS) delete next.inputs;
+    else next.inputs = cmd.inputs;
+  }
+  return { circuit: { ...c, components: c.components.map((x) => (x.id === comp.id ? next : x)) }, result: { component: next, pins: componentPins(next) } };
 }
 
 export function validateWords(words: unknown): number[] {

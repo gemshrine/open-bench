@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { OpenBenchError } from './errors.js';
 import { footprint, pinDef } from './geometry.js';
 import type { Circuit } from './types.js';
-import { ANALYZER_CHANNELS, COMPONENT_TYPES, MAX_WORDS, isPinEndpoint, splitPinId } from './types.js';
+import { ANALYZER_CHANNELS, COMPONENT_TYPES, MAX_GATE_INPUTS, MAX_WORDS, MIN_GATE_INPUTS, isMultiInputGateType, isPinEndpoint, splitPinId } from './types.js';
 
 export const SCHEMA_VERSION = 1 as const;
 export const FILE_EXTENSION = '.openbench.json';
@@ -20,6 +20,7 @@ export const ComponentSchema = z.object({
   label: z.string().max(64).optional(),
   value: z.union([z.literal(0), z.literal(1)]).optional(),
   key: z.string().max(1).optional(),
+  inputs: z.number().int().min(MIN_GATE_INPUTS).max(MAX_GATE_INPUTS).optional(),
 });
 
 export const JunctionSchema = z.object({ id, x: coord, y: coord });
@@ -71,14 +72,16 @@ export function checkCircuitReferences(c: Circuit): string[] {
   const junctions = new Set(c.junctions.map((j) => j.id));
   if (c.components.filter((x) => x.type === 'WORD_GENERATOR').length > 1) problems.push('Допускается один Word Generator');
   if (c.components.filter((x) => x.type === 'LOGIC_ANALYZER').length > 1) problems.push('Допускается один Logic Analyzer');
+  for (const x of c.components)
+    if (x.inputs !== undefined && !isMultiInputGateType(x.type)) problems.push(`${x.id} (${x.type}): число входов задаётся только вентилям AND/NAND/OR/NOR/XOR/XNOR`);
   for (const w of c.wires) {
     for (const e of [w.a, w.b]) {
       if (isPinEndpoint(e)) {
         const { componentId, pin } = splitPinId(e);
         const comp = comps.get(componentId);
         if (!comp) problems.push(`Провод ${w.id}: нет компонента ${componentId}`);
-        else if (!pinDef(comp.type, pin))
-          problems.push(`Провод ${w.id}: у ${componentId} (${comp.type}) нет вывода ${pin}; есть ${footprint(comp.type).pins.map((p) => p.name).join(', ')}`);
+        else if (!pinDef(comp, pin))
+          problems.push(`Провод ${w.id}: у ${componentId} (${comp.type}) нет вывода ${pin}; есть ${footprint(comp).pins.map((p) => p.name).join(', ')}`);
       } else if (!junctions.has(e)) {
         problems.push(`Провод ${w.id}: нет узла ${e}`);
       }
@@ -130,6 +133,7 @@ export function serializeCircuit(c: Circuit): string {
       if (x.label !== undefined) o.label = x.label;
       if (x.value !== undefined) o.value = x.value;
       if (x.key !== undefined) o.key = x.key;
+      if (x.inputs !== undefined) o.inputs = x.inputs;
       return o;
     }),
     junctions: c.junctions.map((j) => ({ id: j.id, x: j.x, y: j.y })),

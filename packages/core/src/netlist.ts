@@ -52,7 +52,7 @@ export function pinDirection(circuit: Circuit, pin: PinId): 'input' | 'output' |
   const { componentId, pin: name } = splitPinId(pin);
   const c = circuit.components.find((x) => x.id === componentId);
   if (!c) return undefined;
-  return pinDef(c.type, name)?.direction;
+  return pinDef(c, name)?.direction;
 }
 
 const cache = new WeakMap<Circuit, Netlist>();

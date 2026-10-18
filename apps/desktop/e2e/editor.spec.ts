@@ -16,7 +16,7 @@ async function pinScreen(page: Page, pinId: string): Promise<{ x: number; y: num
   const c = await circuit(page);
   const [compId, pin] = pinId.split('.') as [string, string];
   const comp = c.components.find((x) => x.id === compId)!;
-  const def = pinDef(comp.type, pin)!;
+  const def = pinDef(comp, pin)!;
   return toScreen(page, comp.x + def.x, comp.y + def.y);
 }
 
@@ -189,4 +189,31 @@ test('branching a wire creates a junction dot (T-connection)', async ({ page }) 
   await page.keyboard.press('1');
   const values = await page.evaluate(() => [...window.__openbench!.session.result.pins.entries()].filter(([k]) => k.endsWith('.IN')));
   expect(Object.fromEntries(values)).toEqual({ 'out1.IN': 1, 'out2.IN': 1 });
+});
+
+test('multi-input gate: input count in Properties, wiring the extra pins, shrink refused while wired', async ({ page }) => {
+  await place(page, 'WORD_GENERATOR', 120, 30);
+  const or = await place(page, 'OR', 200, 160);
+  await place(page, 'LOGIC_ANALYZER', 420, 110);
+  const gp = await toScreen(page, 200, 160);
+  await page.mouse.click(gp.x, gp.y);
+  await page.getByTestId('gate-inputs').selectOption('4');
+  expect((await circuit(page)).components.find((c) => c.id === or)!.inputs).toBe(4);
+  await expect(page.locator(`[data-component="${or}"] line`)).toHaveCount(4 + 1); // input leads + output
+
+  for (const [i, pin] of ['A', 'B', 'C', 'D'].entries()) await wire(page, `wg.D${i}`, `${or}.${pin}`);
+  await wire(page, `${or}.OUT`, 'la.CH0');
+  expect((await circuit(page)).wires).toHaveLength(5);
+
+  await page.evaluate(() => window.__openbench!.session.edit({ type: 'setWords', words: [0, 8, 4, 0, 1] }));
+  for (let i = 0; i < 5; i++) await page.getByTestId('step').click();
+  const ch0 = await page.evaluate(() => window.__openbench!.session.history.map((f) => f.channels[0]));
+  expect(ch0).toEqual([0, 1, 1, 0, 1]);
+
+  // D is wired: going back to 2 inputs is refused with a message, nothing changes.
+  await page.mouse.click(gp.x, gp.y);
+  await page.getByTestId('gate-inputs').selectOption('2');
+  await expect(page.getByTestId('status-error')).toContainText('Нельзя уменьшить число входов');
+  expect((await circuit(page)).components.find((c) => c.id === or)!.inputs).toBe(4);
+  await expect(page.getByTestId('gate-inputs')).toHaveValue('4');
 });

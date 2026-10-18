@@ -1,5 +1,5 @@
 import type { Diagnostic } from '@openbench/core';
-import { componentPins } from '@openbench/core';
+import { MAX_GATE_INPUTS, MIN_GATE_INPUTS, componentPins, gateInputCount, isMultiInputGateType } from '@openbench/core';
 import type { ReactElement } from 'react';
 import type { Selection } from '../canvas/Schematic';
 import { attempt, session, useSessionVersion } from '../store';
@@ -48,6 +48,23 @@ export function Properties({ selection, onSelectComponent }: { selection: Select
             onBlur={(e) => e.target.value !== (comp.label ?? '') && attempt(() => session.edit({ type: 'setComponentProps', id: comp.id, label: e.target.value }))}
           />
         </label>
+        {isMultiInputGateType(comp.type) && (
+          <label className="props-row">
+            <span>Входов</span>
+            <select
+              data-testid="gate-inputs"
+              value={gateInputCount(comp)}
+              onKeyDown={(e) => e.stopPropagation()}
+              onChange={(e) => attempt(() => session.edit({ type: 'setComponentProps', id: comp.id, inputs: Number(e.target.value) }))}
+            >
+              {Array.from({ length: MAX_GATE_INPUTS - MIN_GATE_INPUTS + 1 }, (_, i) => MIN_GATE_INPUTS + i).map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {comp.type === 'INPUT' && (
           <>
             <label className="props-row">

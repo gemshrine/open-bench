@@ -33,7 +33,7 @@ class RouteContext {
   constructor(circuit: Circuit, netOf: (endpoint: string) => string) {
     this.obstacles = circuit.components.map(componentBounds);
     for (const c of circuit.components) {
-      for (const p of footprint(c.type).pins) {
+      for (const p of footprint(c).pins) {
         const pos = pinPosition(c, p);
         this.addPoint(pos.x, pos.y, netOf(`${c.id}.${p.name}`));
       }
@@ -118,7 +118,20 @@ function segmentHitsRect(p: Point, q: Point, r: Rect): boolean {
 
 const OFFSETS = [0, 5, -5, 10, -10, 15, -15, 20, -20, 30, -30];
 
-function candidates(a: EndpointGeometry, b: EndpointGeometry): { inner: Point[]; offset: number }[] {
+/** Lanes 10 units outside every nearby obstacle: lets detours clear tall components (multi-input gates, instruments). */
+function detourLanes(obstacles: Rect[]): { xs: number[]; ys: number[] } {
+  const xs = new Set<number>();
+  const ys = new Set<number>();
+  for (const r of obstacles) {
+    xs.add(r.x - 10);
+    xs.add(r.x + r.width + 10);
+    ys.add(r.y - 10);
+    ys.add(r.y + r.height + 10);
+  }
+  return { xs: [...xs], ys: [...ys] };
+}
+
+function candidates(a: EndpointGeometry, b: EndpointGeometry, obstacles: Rect[] = []): { inner: Point[]; offset: number }[] {
   const A = a.point;
   const B = b.point;
   const out: { inner: Point[]; offset: number }[] = [
@@ -128,6 +141,7 @@ function candidates(a: EndpointGeometry, b: EndpointGeometry): { inner: Point[];
   ];
   const mx = snap((A.x + B.x) / 2, 5);
   const my = snap((A.y + B.y) / 2, 5);
+  const lanes = detourLanes(obstacles);
   for (const k of OFFSETS) {
     out.push({ inner: [{ x: mx + k, y: A.y }, { x: mx + k, y: B.y }], offset: Math.abs(k) });
     out.push({ inner: [{ x: A.x, y: my + k }, { x: B.x, y: my + k }], offset: Math.abs(k) });
@@ -142,6 +156,10 @@ function candidates(a: EndpointGeometry, b: EndpointGeometry): { inner: Point[];
     for (const k of OFFSETS) {
       out.push({ inner: [sa, { x: smx + k, y: sa.y }, { x: smx + k, y: sb.y }, sb], offset: ext + Math.abs(k) });
       out.push({ inner: [sa, { x: sa.x, y: smy + k }, { x: sb.x, y: smy + k }, sb], offset: ext + Math.abs(k) });
+    }
+    if (ext === 0) {
+      for (const x of lanes.xs) out.push({ inner: [sa, { x, y: sa.y }, { x, y: sb.y }, sb], offset: Math.abs(x - smx) });
+      for (const y of lanes.ys) out.push({ inner: [sa, { x: sa.x, y }, { x: sb.x, y }, sb], offset: Math.abs(y - smy) });
     }
   }
   return out;
@@ -169,7 +187,7 @@ function bestRoute(a: EndpointGeometry, b: EndpointGeometry, ctx: RouteContext |
   let best: Point[] = [a.point, b.point];
   let bestCost = Number.POSITIVE_INFINITY;
   const obstacles = ctx ? ctx.near(a.point, b.point) : [];
-  for (const cand of candidates(a, b)) {
+  for (const cand of candidates(a, b, obstacles)) {
     const path = simplify(dedupe([a.point, ...cand.inner, b.point]));
     if (path.length < 2) continue;
     if (path.some((p, i) => i > 0 && p.x !== path[i - 1]!.x && p.y !== path[i - 1]!.y)) continue;
@@ -246,7 +264,7 @@ export function branchDots(circuit: Circuit): Point[] {
   const routes = routeAll(circuit);
   const netlist = buildNetlist(circuit);
   const pinPoints = new Set<string>();
-  for (const c of circuit.components) for (const p of footprint(c.type).pins) {
+  for (const c of circuit.components) for (const p of footprint(c).pins) {
     const pos = pinPosition(c, p);
     pinPoints.add(`${pos.x},${pos.y}`);
   }

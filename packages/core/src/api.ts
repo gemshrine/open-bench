@@ -4,7 +4,7 @@ import { OpenBenchError, fail } from './errors.js';
 import { serializeCircuit, parseProjectText } from './schema.js';
 import type { Frame, Session } from './session.js';
 import type { Signal } from './types.js';
-import { ANALYZER_CHANNELS, COMPONENT_TYPES, MAX_STEPS_PER_CALL, MAX_WORDS } from './types.js';
+import { ANALYZER_CHANNELS, COMPONENT_TYPES, MAX_GATE_INPUTS, MAX_STEPS_PER_CALL, MAX_WORDS, MIN_GATE_INPUTS } from './types.js';
 
 /**
  * File access provided by the host (GUI). Paths given by the MCP side are always
@@ -34,6 +34,17 @@ export const API_SCHEMAS = {
     y: z.number().finite().describe('Координата Y левого верхнего угла (сетка 10)'),
     id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).optional().describe('Необязательный желаемый ID'),
     label: z.string().max(64).optional(),
+    inputs: z
+      .number()
+      .int()
+      .min(MIN_GATE_INPUTS)
+      .max(MAX_GATE_INPUTS)
+      .optional()
+      .describe('Только AND/NAND/OR/NOR/XOR/XNOR: число входов 2…8 (выводы A…H), по умолчанию 2'),
+  }),
+  set_gate_inputs: z.object({
+    id: z.string().min(1).max(64),
+    inputs: z.number().int().min(MIN_GATE_INPUTS).max(MAX_GATE_INPUTS).describe('Число входов 2…8 (выводы A…H)'),
   }),
   move_component: z.object({ id: z.string().min(1).max(64), x: z.number().finite(), y: z.number().finite() }),
   remove_component: z.object({ id: z.string().min(1).max(64) }),
@@ -166,7 +177,12 @@ export async function handleApiRequest(
       const cmd: Parameters<Session['edit']>[0] = { type: 'addComponent', componentType: p.type, x: p.x, y: p.y };
       if (p.id !== undefined) cmd.id = p.id;
       if (p.label !== undefined) cmd.label = p.label;
+      if (p.inputs !== undefined) cmd.inputs = p.inputs;
       return session.edit(cmd);
+    }
+    case 'set_gate_inputs': {
+      const p = parsed.data as z.infer<(typeof API_SCHEMAS)['set_gate_inputs']>;
+      return session.edit({ type: 'setComponentProps', id: p.id, inputs: p.inputs });
     }
     case 'move_component': {
       const p = parsed.data as z.infer<(typeof API_SCHEMAS)['move_component']>;

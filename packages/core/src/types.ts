@@ -1,6 +1,12 @@
 export const GATE_TYPES = ['BUFFER', 'NOT', 'AND', 'NAND', 'OR', 'NOR', 'XOR', 'XNOR'] as const;
 export type GateType = (typeof GATE_TYPES)[number];
 
+/** Gates whose number of inputs is configurable (`Component.inputs`). */
+export const MULTI_INPUT_GATE_TYPES = ['AND', 'NAND', 'OR', 'NOR', 'XOR', 'XNOR'] as const;
+export type MultiInputGateType = (typeof MULTI_INPUT_GATE_TYPES)[number];
+export const MIN_GATE_INPUTS = 2;
+export const MAX_GATE_INPUTS = 8;
+
 export const COMPONENT_TYPES = [
   'INPUT',
   'OUTPUT',
@@ -50,6 +56,8 @@ export interface Component {
   value?: Bit;
   /** INPUT only: keyboard key that toggles it (shown as `[key]`). */
   key?: string;
+  /** Multi-input gates only: number of inputs 2…8 (pins A…H); absent means 2. */
+  inputs?: number;
 }
 
 export interface Junction {
@@ -121,4 +129,8 @@ export function splitPinId(pin: PinId): { componentId: string; pin: string } {
 
 export function isGateType(t: ComponentType): t is GateType {
   return (GATE_TYPES as readonly string[]).includes(t);
+}
+
+export function isMultiInputGateType(t: ComponentType): t is MultiInputGateType {
+  return (MULTI_INPUT_GATE_TYPES as readonly string[]).includes(t);
 }

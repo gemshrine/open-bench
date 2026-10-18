@@ -11,6 +11,7 @@
   "components": [
     { "id": "wg",   "type": "WORD_GENERATOR", "x": 40,  "y": 20 },
     { "id": "and1", "type": "AND",            "x": 140, "y": 120 },
+    { "id": "or1",  "type": "OR",             "x": 140, "y": 200, "inputs": 4 },
     { "id": "in1",  "type": "INPUT", "x": 0, "y": 0, "value": 1, "key": "1", "label": "a0" }
   ],
   "junctions": [ { "id": "j1", "x": 100, "y": 10 } ],
@@ -40,7 +41,7 @@
 | `OUTPUT` | `IN` | пробник |
 | `CONST0`, `CONST1` | `OUT` | земля / +Vcc |
 | `BUFFER`, `NOT` | `A`, `OUT` | |
-| `AND`, `NAND`, `OR`, `NOR`, `XOR`, `XNOR` | `A`, `B`, `OUT` | |
+| `AND`, `NAND`, `OR`, `NOR`, `XOR`, `XNOR` | `A`, `B`, … , `OUT` | `inputs` — число входов 2…8 (выводы `A`…`H`); нет поля — 2 |
 | `WORD_GENERATOR` | `D0`…`D15` (выходы) | не больше одного; `D0` — младший бит слова |
 | `LOGIC_ANALYZER` | `CH0`…`CH15` (входы) | не больше одного |
 

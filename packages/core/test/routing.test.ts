@@ -101,3 +101,14 @@ describe('auto routing', () => {
     for (const w of c.wires) expect(crossesBody(c, wirePolyline(c, w)!)).toEqual([]);
   });
 });
+
+describe('routing around tall components', () => {
+  it('a wire from the right to an input of an 8-input gate goes around the body, not through it', () => {
+    const { session } = newSession();
+    session.edit({ type: 'addComponent', componentType: 'XOR', x: 400, y: 20, id: 'g', inputs: 8 });
+    session.edit({ type: 'addComponent', componentType: 'INPUT', x: 520, y: 20, id: 'sw' });
+    session.edit({ type: 'connect', a: 'sw.OUT', b: 'g.H' });
+    const c = session.circuit;
+    expect(crossesBody(c, wirePolyline(c, c.wires[0]!)!)).toEqual([]);
+  });
+});

@@ -120,7 +120,7 @@ export function Schematic(props: Props): ReactElement {
     (p: Point): Hit => {
       const tol = 5 / Math.min(view.zoom, 1.5);
       for (const c of [...display.components].reverse()) {
-        for (const pin of footprint(c.type).pins) {
+        for (const pin of footprint(c).pins) {
           const pos = pinPosition(c, pin);
           if (Math.abs(pos.x - p.x) <= tol && Math.abs(pos.y - p.y) <= tol) return { kind: 'pin', id: `${c.id}.${pin.name}`, point: pos };
         }
@@ -406,7 +406,7 @@ export function Schematic(props: Props): ReactElement {
 
   const componentEls = display.components.map((c) => {
     const pins: Record<string, Signal> = {};
-    for (const p of footprint(c.type).pins) pins[p.name] = result.pins.get(`${c.id}.${p.name}`) ?? 'X';
+    for (const p of footprint(c).pins) pins[p.name] = result.pins.get(`${c.id}.${p.name}`) ?? 'X';
     return (
       <g key={c.id} transform={`translate(${c.x},${c.y})`} data-component={c.id} data-type={c.type}>
         <title>{componentTitle(c, pins)}</title>

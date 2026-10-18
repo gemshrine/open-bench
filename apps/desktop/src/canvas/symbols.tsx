@@ -1,4 +1,4 @@
-import type { Component, ComponentType, Signal } from '@openbench/core';
+import type { Component, Signal } from '@openbench/core';
 import { footprint, hex4, wordGeneratorPinX } from '@openbench/core';
 import type { ReactElement } from 'react';
 
@@ -17,42 +17,73 @@ export interface SymbolProps {
   wg?: { address: number | null; word: number | null };
 }
 
-function gateBody(type: ComponentType, ink: string): ReactElement {
+/** Tallest gate body; gates with more inputs get an input bar extending the back edge (ANSI style). */
+const MAX_BODY = 40;
+
+function gateBody(component: Component, ink: string): ReactElement {
+  const type = component.type;
   const s = { fill: '#fff', stroke: ink, strokeWidth: 1 };
   const line = { stroke: ink, strokeWidth: 1 };
-  const twoInputs = (x2: number) => (
+  const f = footprint(component);
+  const h = f.height;
+  const mid = h / 2;
+  const bh = Math.min(h, MAX_BODY);
+  const top = (h - bh) / 2;
+  const inputs = f.pins.filter((p) => p.direction === 'input');
+  // The body is drawn at the 20-unit reference height and stretched vertically.
+  const body = (d: string, extra: ReactElement | null = null) => (
+    <g transform={`translate(0 ${top}) scale(1 ${bh / 20})`}>
+      {extra}
+      <path d={d} {...s} vectorEffect="non-scaling-stroke" />
+    </g>
+  );
+  /** Input leads ending at the back edge: x0 at the bar, curved by `bulge` inside the body. */
+  const leads = (x0: number, bulge: number) => (
     <>
-      <line x1={0} y1={5} x2={x2} y2={5} {...line} />
-      <line x1={0} y1={15} x2={x2} y2={15} {...line} />
+      {inputs.map((p) => {
+        const t = (p.y - top) / bh;
+        const x2 = t > 0 && t < 1 ? x0 + 4 * bulge * t * (1 - t) : x0;
+        return <line key={p.name} x1={0} y1={p.y} x2={x2} y2={p.y} {...line} />;
+      })}
+      {top > 0 && (
+        <>
+          <line x1={x0} y1={5} x2={x0} y2={top} {...line} />
+          <line x1={x0} y1={top + bh} x2={x0} y2={h - 5} {...line} />
+        </>
+      )}
     </>
   );
-  const bubble = (cx: number) => <circle cx={cx} cy={10} r={2.5} {...s} />;
+  const bubble = (cx: number) => <circle cx={cx} cy={mid} r={2.5} {...s} />;
+  const output = (inv: boolean, x: number) => (
+    <>
+      {inv && bubble(x + 2.5)}
+      <line x1={inv ? x + 5 : x} y1={mid} x2={40} y2={mid} {...line} />
+    </>
+  );
   switch (type) {
     case 'AND':
-    case 'NAND': {
-      const inv = type === 'NAND';
+    case 'NAND':
       return (
         <>
-          {twoInputs(10)}
-          <path d="M10,0 H21 A10,10 0 0 1 21,20 H10 Z" {...s} />
-          {inv && bubble(33.5)}
-          <line x1={inv ? 36 : 31} y1={10} x2={40} y2={10} {...line} />
+          {leads(10, 0)}
+          {body('M10,0 H21 A10,10 0 0 1 21,20 H10 Z')}
+          {output(type === 'NAND', 31)}
         </>
       );
-    }
     case 'OR':
     case 'NOR':
     case 'XOR':
     case 'XNOR': {
-      const inv = type === 'NOR' || type === 'XNOR';
       const ex = type === 'XOR' || type === 'XNOR';
+      // Quadratic back curve from (x0,0) via (x0+6,10) to (x0,20) bulges by 3 at mid-height.
       return (
         <>
-          {twoInputs(ex ? 7.5 : 11)}
-          {ex && <path d="M5.5,0 Q11.5,10 5.5,20" fill="none" stroke={ink} strokeWidth={1} />}
-          <path d="M9,0 Q24,0 31,10 Q24,20 9,20 Q15,10 9,0 Z" {...s} />
-          {inv && bubble(33.5)}
-          <line x1={inv ? 36 : 31} y1={10} x2={40} y2={10} {...line} />
+          {leads(ex ? 5.5 : 9, 3)}
+          {body(
+            'M9,0 Q24,0 31,10 Q24,20 9,20 Q15,10 9,0 Z',
+            ex ? <path d="M5.5,0 Q11.5,10 5.5,20" fill="none" stroke={ink} strokeWidth={1} vectorEffect="non-scaling-stroke" /> : null,
+          )}
+          {output(type === 'NOR' || type === 'XNOR', 31)}
         </>
       );
     }
@@ -215,7 +246,7 @@ export function ComponentSymbol({ component, selected, pins, wg }: SymbolProps):
     case 'LOGIC_ANALYZER':
       return <LogicAnalyzerSymbol selected={selected} />;
     default:
-      return gateBody(component.type, ink);
+      return gateBody(component, ink);
   }
 }
 
@@ -225,7 +256,7 @@ export function ComponentLabel({ component }: { component: Component }): ReactEl
   if (component.label) lines.push(component.label);
   if (component.type === 'INPUT' && component.key) lines.push(`[${component.key}]`);
   if (lines.length === 0) return null;
-  const w = footprint(component.type).width;
+  const w = footprint(component).width;
   return (
     <text
       x={component.type === 'INPUT' ? w / 2 - 2 : w / 2}

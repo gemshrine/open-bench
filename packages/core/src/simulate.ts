@@ -191,14 +191,14 @@ export function evaluate(circuit: Circuit, sources: SourceInputs, prev?: Map<str
   // 3. Collect net and pin values.
   for (const net of netlist.nets) nets.set(net.id, netValue(net));
   for (const c of circuit.components) {
-    for (const p of footprint(c.type).pins) {
+    for (const p of footprint(c).pins) {
       const id = `${c.id}.${p.name}`;
       const net = netlist.netOfPin.get(id);
       if (p.direction === 'output') pins.set(id, net ? nets.get(net.id)! : (outputs.get(id) ?? 'X'));
       else pins.set(id, net ? nets.get(net.id)! : 'X');
     }
     if (isGateType(c.type) || c.type === 'OUTPUT') {
-      const unconnected = footprint(c.type)
+      const unconnected = footprint(c)
         .pins.filter((p) => p.direction === 'input' && !netlist.netOfPin.has(`${c.id}.${p.name}`))
         .map((p) => p.name);
       if (unconnected.length > 0) {
@@ -229,7 +229,7 @@ function gateGraph(circuit: Circuit, netlist: Netlist): GateGraph {
   const gates = circuit.components.filter((c) => isGateType(c.type)).sort((a, b) => (a.id < b.id ? -1 : 1));
   const gateIndex = new Map(gates.map((g, i) => [g.id, i] as const));
   const inputPins = gates.map((g) =>
-    footprint(g.type)
+    footprint(g)
       .pins.filter((p) => p.direction === 'input')
       .map((p) => `${g.id}.${p.name}`),
   );

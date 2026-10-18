@@ -125,6 +125,26 @@ describe('MCP server ⇄ bridge ⇄ engine', () => {
     expect((hist.channels as Record<string, { values: unknown[] }>).CH0!.values).toEqual([0, 1, 1, 0]);
   });
 
+  it('multi-input gate through MCP: 3-input AND, then widened with set_gate_inputs', async () => {
+    await data('new_project', {});
+    await data('add_component', { type: 'WORD_GENERATOR', x: 20, y: 20 });
+    const and = await data('add_component', { type: 'AND', x: 200, y: 150, inputs: 3 });
+    expect((and.pins as { id: string }[]).map((p) => p.id)).toEqual(['and1.A', 'and1.B', 'and1.C', 'and1.OUT']);
+    for (const [i, pin] of ['A', 'B', 'C'].entries()) await data('connect_pins', { from: `wg.D${i}`, to: `and1.${pin}` });
+    await data('attach_analyzer_channel', { channel: 0, target: 'and1.OUT' });
+    await data('set_word_sequence', { words: [3, 7, 5, 15] });
+    await data('simulation_step', { count: 4 });
+    const hist = await data('get_analyzer_history', { channels: [0] });
+    expect((hist.channels as Record<string, { values: unknown[] }>).CH0!.values).toEqual([0, 1, 0, 1]);
+
+    const wider = await data('set_gate_inputs', { id: 'and1', inputs: 4 });
+    expect((wider.pins as { id: string }[]).map((p) => p.id)).toContain('and1.D');
+    expect(guiSession.circuit.components.find((c) => c.id === 'and1')!.inputs).toBe(4);
+    const shrink = await call('set_gate_inputs', { id: 'and1', inputs: 2 });
+    expect(shrink.isError).toBe(true);
+    expect(JSON.parse(shrink.content[0]!.text).error.code).toBe('INVALID_CONNECTION');
+  });
+
   it('scenario 4 (sync): MCP edits appear in the GUI session, GUI input changes are visible to MCP', async () => {
     await data('new_project', {});
     await data('add_component', { type: 'INPUT', x: 0, y: 0, id: 'sw' });
