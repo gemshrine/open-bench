@@ -63,3 +63,33 @@ jobs:
             apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
             apps/mcp-server/dist/openbench-mcp.mjs
           if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: bundle
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # openbench-mcp.mjs is built on both platforms; attach it once.
+          files=$(find artifacts -type f | awk -F/ '!seen[$NF]++')
+          echo "$files"
+          cat > notes.md <<'NOTES'
+          | Файл | Для чего |
+          |---|---|
+          | `OpenBench_*_x64-setup.exe` | установщик для Windows |
+          | `OpenBench_*_x64_en-US.msi` | MSI-пакет для Windows |
+          | `OpenBench_*_amd64.deb` | Debian / Ubuntu 22.04+ |
+          | `OpenBench-*.x86_64.rpm` | Fedora / openSUSE |
+          | `OpenBench_*_amd64.AppImage` | любой Linux x86_64 без установки |
+          | `openbench-mcp.mjs` | MCP-сервер для подключения MCP-клиента (нужен Node.js ≥ 20), см. `docs/mcp-setup.md` |
+          NOTES
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "OpenBench ${GITHUB_REF_NAME#v}" --notes-file notes.md --generate-notes $files
