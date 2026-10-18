@@ -8,3 +8,4 @@ playwright-report/
 .vite/
 .DS_Store
 ref/
+dist-linux/

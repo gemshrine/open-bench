@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/target
+**/test-results
+**/playwright-report
+apps/desktop/src-tauri/gen
+dist-linux
+ref
+.git
